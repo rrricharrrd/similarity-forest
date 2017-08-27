@@ -22,7 +22,8 @@ def _split_metric(total_left, total_right, true_left, true_right):
 
 
 class Node:
-    def __init__(self, depth, similarity_function=np.dot, n_axes=1, max_depth=None):
+    def __init__(self, depth, similarity_function=np.dot, n_axes=1,
+                 max_depth=None):
         self.depth = depth
         self.max_depth = max_depth
         self._sim = similarity_function
@@ -36,11 +37,8 @@ class Node:
 
     def _find_split(self, X, y, p, q):
         n = len(X)
-        sims = [self._sim(x, q) - self._sim(x, p)
-                if self._sim(x, q) is not None and self._sim(x, p) is not None
-                else None
-                for x in X]
-        indices = sorted([i for i in range(n) if sims[i] is not None],
+        sims = [self._sim(x, q) - self._sim(x, p) for x in X]
+        indices = sorted([i for i in range(n) if not np.isnan(sims[i])],
                          key=lambda x: sims[x])
 
         best_metric = 0
@@ -84,13 +82,11 @@ class Node:
             self._q = best_q
             self.criterion = best_criterion
 
-            similarities = np.array(
-                [(self._sim(x, self._q) - self._sim(x, self._p))
-                 for x in X])
-            X_left = X[similarities <= self.criterion, :]
-            X_right = X[similarities > self.criterion, :]
-            y_left = y[similarities <= self.criterion]
-            y_right = y[similarities > self.criterion]
+            sims = [self._sim(x, self._q) - self._sim(x, self._p) for x in X]
+            X_left = X[sims <= self.criterion, :]
+            X_right = X[sims > self.criterion, :]
+            y_left = y[sims <= self.criterion]
+            y_right = y[sims > self.criterion]
 
             self._left = Node(self.depth, self._sim).fit(X_left, y_left)
             self._right = Node(self.depth, self._sim).fit(X_right, y_right)
@@ -118,7 +114,7 @@ class SimilarityForest:
 
     :param n_estimators: number of trees in the forest (default=10)
     :param similarity_function: similarity function (default is dot product) -
-                                should return None if similarity unknown
+                                should return np.nan if similarity unknown
     :param n_axes: number of 'axes' per split
     :param max_depth: maximum depth to grow trees to (default=None)
     """
