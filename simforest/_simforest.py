@@ -36,15 +36,15 @@ class Node:
         self.prediction = None
 
     def _find_split(self, X, y, p, q):
-        n = len(X)
         sims = [self._sim(x, q) - self._sim(x, p) for x in X]
-        indices = sorted([i for i in range(n) if not np.isnan(sims[i])],
+        indices = sorted([i for i in range(len(y)) if not np.isnan(sims[i])],
                          key=lambda x: sims[x])
 
         best_metric = 0
         best_p = None
         best_q = None
         best_criterion = 0
+        n = len(indices)
         for i in range(1, n):
             left_true = sum(y[indices[:i]])
             right_true = sum(y) - left_true
@@ -96,12 +96,12 @@ class Node:
     def _predict_proba_once(self, x):
         if self._left is None:
             return self.prediction
-        elif self._sim(x, self._q) is None or self._sim(x, self._p) is None:
-            return self.prediction
         elif self._sim(x, self._q) - self._sim(x, self._p) <= self.criterion:
             return self._left._predict_proba_once(x)
-        else:
+        elif self._sim(x, self._q) - self._sim(x, self._p) > self.criterion:
             return self._right._predict_proba_once(x)
+        else:
+            return self.prediction
 
     def predict_proba(self, X):
         return [self._predict_proba_once(x) for x in X]
@@ -133,6 +133,7 @@ class SimilarityForest:
     def fit(self, X, y):
         """
         Build a forest of trees from the training set (X, y).
+
         :param X: training set
         :param y: training set labels
         :return: self
@@ -159,7 +160,7 @@ class SimilarityForest:
 
     def predict(self, X):
         """
-        Predicts class of X.
+        Predict class of X.
 
         :param X: samples to make predictions for
         :return: array of class predictions
