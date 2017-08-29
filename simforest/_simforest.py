@@ -57,7 +57,7 @@ class Node:
         return best_metric, best_p, best_q, best_criterion
 
     def fit(self, X, y):
-        if self.max_depth is not None and self.max_depth >= self.depth:
+        if self.max_depth is not None and self.depth >= self.max_depth:
             return self
 
         self.prediction = sum(y) / len(y)
