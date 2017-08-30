@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 
 if __name__ == '__main__':
-    X, y = make_blobs(n_samples=100, centers=[(0, 0), (1, 1)])
+    X, y = make_blobs(n_samples=1000, centers=[(0, 0), (1, 1)])
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=1234)
 

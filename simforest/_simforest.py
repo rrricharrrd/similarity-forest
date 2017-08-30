@@ -44,24 +44,27 @@ class Node:
         best_p = None
         best_q = None
         best_criterion = 0
+
         n = len(indices)
-        for i in range(1, n):
-            left_true = sum(y[indices[:i]])
-            right_true = sum(y) - left_true
-            split_metric = _split_metric(i, n - i, left_true, right_true)
+        total_true = sum([y[j] for j in indices])
+        left_true = 0
+        for i in range(n - 1):
+            left_true += y[indices[i]]
+            right_true = total_true - left_true
+            split_metric = _split_metric(i + 1, n - i - 1, left_true, right_true)
             if split_metric > best_metric:
                 best_metric = split_metric
                 best_p = p
                 best_q = q
-                best_criterion = (sims[indices[i - 1]] + sims[indices[i]]) / 2
+                best_criterion = (sims[indices[i]] + sims[indices[i + 1]]) / 2
         return best_metric, best_p, best_q, best_criterion
 
     def fit(self, X, y):
-        if self.max_depth is not None and self.depth >= self.max_depth:
-            return self
-
         self.prediction = sum(y) / len(y)
         if self.prediction in [0, 1]:
+            return self
+
+        if self.max_depth is not None and self.depth >= self.max_depth:
             return self
 
         best_metric = 0
@@ -88,8 +91,11 @@ class Node:
             y_left = y[sims <= self.criterion]
             y_right = y[sims > self.criterion]
 
-            self._left = Node(self.depth, self._sim).fit(X_left, y_left)
-            self._right = Node(self.depth, self._sim).fit(X_right, y_right)
+            if len(y_left) > 0 and len(y_right) > 0:
+                self._left = Node(
+                    self.depth + 1, self._sim, self.n_axes, self.max_depth).fit(X_left, y_left)
+                self._right = Node(
+                    self.depth + 1, self._sim, self.n_axes, self.max_depth).fit(X_right, y_right)
 
         return self
 
