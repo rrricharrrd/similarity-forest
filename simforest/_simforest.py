@@ -40,7 +40,7 @@ class Node:
         indices = sorted([i for i in range(len(y)) if not np.isnan(sims[i])],
                          key=lambda x: sims[x])
 
-        best_metric = 0
+        best_metric = 1
         best_p = None
         best_q = None
         best_criterion = 0
@@ -52,7 +52,7 @@ class Node:
             left_true += y[indices[i]]
             right_true = total_true - left_true
             split_metric = _split_metric(i + 1, n - i - 1, left_true, right_true)
-            if split_metric > best_metric:
+            if split_metric < best_metric:
                 best_metric = split_metric
                 best_p = p
                 best_q = q
@@ -67,20 +67,20 @@ class Node:
         if self.max_depth is not None and self.depth >= self.max_depth:
             return self
 
-        best_metric = 0
+        best_metric = 1
         best_p = None
         best_q = None
         best_criterion = 0
         for i, j in _sample_axes(y, self.n_axes):
             metric, p, q, criterion = self._find_split(X, y, X[i], X[j])
-            if metric > best_metric:
+            if metric < best_metric:
                 best_metric = metric
                 best_p = p
                 best_q = q
                 best_criterion = criterion
 
         # Split found
-        if best_metric > 0:
+        if best_metric < 1:
             self._p = best_p
             self._q = best_q
             self.criterion = best_criterion
