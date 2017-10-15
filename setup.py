@@ -1,5 +1,6 @@
-from setuptools import setup
-
+from distutils.core import setup
+from Cython.Build import cythonize
+import numpy as np
 
 def readme():
     with open('README.rst') as f:
@@ -13,6 +14,6 @@ setup(name='Similarity Forest',
       author_email='rrricharrrd@gmail.com',
       license='MIT',
       packages=['simforest'],
-      install_requires=['numpy'],
-      scripts=[],
-      zip_safe=False)
+      include_dirs=[np.get_include()],
+      ext_modules=cythonize('simforest/_node.pyx'),
+      scripts=[])
