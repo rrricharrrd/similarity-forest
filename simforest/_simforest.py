@@ -3,11 +3,11 @@ from __future__ import division, print_function
 import numpy as np
 
 
-def _sample_axes(labels, n_samples=1):
+def _sample_axes(labels, rand, n_samples=1):
     pos = np.where(labels == 1)[0]
     neg = np.where(labels == 0)[0]
     for _ in range(n_samples):
-        yield np.random.choice(pos), np.random.choice(neg)
+        yield rand.choice(pos), rand.choice(neg)
 
 
 def _split_metric(total_left, total_right, true_left, true_right):
@@ -23,7 +23,7 @@ def _split_metric(total_left, total_right, true_left, true_right):
 
 class Node:
     def __init__(self, depth, similarity_function=np.dot, n_axes=1,
-                 max_depth=None):
+                 max_depth=None, rand=None):
         self.depth = depth
         self.max_depth = max_depth
         self._sim = similarity_function
@@ -34,6 +34,7 @@ class Node:
         self._q = None
         self.criterion = None
         self.prediction = None
+        self._rand = np.random.RandomState() if rand is None else rand
 
     def _find_split(self, X, y, p, q):
         sims = [self._sim(x, q) - self._sim(x, p) for x in X]
@@ -71,7 +72,7 @@ class Node:
         best_p = None
         best_q = None
         best_criterion = 0
-        for i, j in _sample_axes(y, self.n_axes):
+        for i, j in _sample_axes(y, self._rand, self.n_axes):
             metric, p, q, criterion = self._find_split(X, y, X[i], X[j])
             if metric < best_metric:
                 best_metric = metric
@@ -92,10 +93,16 @@ class Node:
             y_right = y[sims > self.criterion]
 
             if len(y_left) > 0 and len(y_right) > 0:
-                self._left = Node(
-                    self.depth + 1, self._sim, self.n_axes, self.max_depth).fit(X_left, y_left)
-                self._right = Node(
-                    self.depth + 1, self._sim, self.n_axes, self.max_depth).fit(X_right, y_right)
+                self._left = Node(self.depth + 1,
+                                  self._sim,
+                                  self.n_axes,
+                                  self.max_depth,
+                                  self._rand).fit(X_left, y_left)
+                self._right = Node(self.depth + 1,
+                                   self._sim,
+                                   self.n_axes,
+                                   self.max_depth,
+                                   self._rand).fit(X_right, y_right)
 
         return self
 
@@ -125,15 +132,16 @@ class SimilarityForest:
     :param max_depth: maximum depth to grow trees to (default=None)
     """
     def __init__(self, n_estimators=10, similarity_function=np.dot, n_axes=1,
-                 max_depth=None):
+                 max_depth=None, random_state=None):
         self.n_estimators = n_estimators
         self.n_axes = n_axes
         self.max_depth = max_depth
         self._sim = similarity_function
         self._trees = None
+        self._rand = np.random.RandomState(random_state)
 
     def _bag(self, X, y):
-        selection = np.array(list(set(np.random.choice(len(y), size=len(y)))))
+        selection = np.array(list(set(self._rand.choice(len(y), size=len(y)))))
         return X[selection, :], y[selection]
 
     def fit(self, X, y):
@@ -147,11 +155,12 @@ class SimilarityForest:
         if len(X) != len(y):  # @@@ More checks
             print('Bad sizes: {}, {}'.format(X.shape, y.shape))
         else:
-            self._trees = [
-                Node(1, self._sim, self.n_axes, self.max_depth).fit(
-                    *self._bag(X, y))
-                for _ in range(self.n_estimators)
-            ]
+            self._trees = [Node(1,
+                                self._sim,
+                                self.n_axes,
+                                self.max_depth,
+                                self._rand).fit(*self._bag(X, y))
+                           for _ in range(self.n_estimators)]
         return self
 
     def predict_proba(self, X):
